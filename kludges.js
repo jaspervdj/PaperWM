@@ -12,7 +12,6 @@ if (imports.misc.extensionUtils.extensions) {
     Extension = imports.ui.main.extensionManager.lookup("paperwm@hedning:matrix.org");
 }
 
-
 var Meta = imports.gi.Meta;
 var Gio = imports.gi.Gio;
 var Main = imports.ui.main;
@@ -28,6 +27,8 @@ var Tiling = Extension.imports.tiling;
 var settings = Convenience.getSettings();
 var Clutter = imports.gi.Clutter;
 let St = imports.gi.St;
+
+var version = Extension.imports.utils.version
 
 function overrideHotCorners() {
     for (let corner of Main.layoutManager.hotCorners) {
@@ -50,6 +51,11 @@ if (!global.display.get_monitor_neighbor_index) {
     global.display.constructor.prototype.get_monitor_neighbor_index = function(...args) {
         return global.screen.get_monitor_neighbor_index(...args);
     }
+}
+
+
+if (!global.display.set_cursor) {
+    global.display.constructor.prototype.set_cursor = global.screen.set_cursor.bind(global.screen);
 }
 
 // polyfill for 3.28
@@ -83,7 +89,6 @@ if (!Clutter.Actor.prototype.set) {
 }
 
 // Polyfill gnome-3.34 transition API, taken from gnome-shell/js/ui/environment.js
-const version = imports.misc.config.PACKAGE_VERSION.split('.');
 if (version[0] >= 3 && version[1] < 34) {
     function _makeEaseCallback(params, cleanup) {
         let onComplete = params.onComplete;
@@ -398,8 +403,10 @@ function init() {
         registerOverridePrototype(Workspace.UnalignedLayoutStrategy, 'computeLayout', layout);
 
 
-    // Kill pinch gestures as they work pretty bad (especially when 3-finger swiping)
-    registerOverrideProp(imports.ui.viewSelector, "PINCH_GESTURE_THRESHOLD", 0);
+    // Kill pinch gestures as they work pretty bad (especially when 3-finger swipin
+    if (version[1] < 40) {
+        registerOverrideProp(imports.ui.viewSelector, "PINCH_GESTURE_THRESHOLD", 0)
+    }
 
     if (Main.wm._swipeTracker)
         registerOverrideProp(Main.wm._swipeTracker._touchpadGesture, "enabled", false);
